@@ -29,10 +29,45 @@ public class VariablesList {
     public void Register(List<Integer> Clause, Integer ClauseNumber){
         for (Integer K : Clause) {
             if(Clause.size()!=1){  //IE. for each clause processed, IF CLAUSE IS NOT A SINGLE VARIABLE CLAUSE.
-                if(this.Lister.get(Math.abs(K))==null) { //If the variable has never been initialised, Create a new entry
+
+                //If the variable has never been initialised, Create a new entry
+                if(this.Lister.get(Math.abs(K))==null) { 
                     Lister.put(Math.abs(K), new Variables(ClauseNumber));
-                    // Initialise said Variable's true number representation (negative is negated form)
-                    Lister.get(Math.abs(K)).is_in.put(ClauseNumber,);
+                    // Initialise said Variable's true number representation (We just need to know what variable it is)
+                    
+                    
+                    //Create a size = 2 List, First entry being which clause said variable appears in, and Second being variable type.
+                    List<Integer> varsandtype = new ArrayList<Integer>();                    
+                    varsandtype.add(ClauseNumber);
+                    varsandtype.add(Negativecheck.check(K));
+                    
+                    //Taking the reference from within Master Variables hashtable, update variable's is_in hashtable.
+                    Lister.get(Math.abs(K)).is_in.put(ClauseNumber,varsandtype);
+                }
+                
+                
+                //If the variable has indeed been initialised, update the existing entry
+                else{
+                    //Again, create a size = 2 List, First entry being which clause said variable appears in, and Second being variable type.
+                    List<Integer> varsandtype = new ArrayList<Integer>();
+                    varsandtype.add(ClauseNumber);
+                    varsandtype.add(Negativecheck.check(K));
+                    //Taking the reference from within Master Variables hashtable, update variable's is_in hashtable.
+                    Lister.get(Math.abs(K)).is_in.put(ClauseNumber,varsandtype);
+                }
+                
+                
+                
+            }
+            //Else occurs when the clause size is 1. So it's a single variable clause.
+            else{
+                //IF this variable has never been initalised and is appearing as a singular.
+                if(this.Lister.get(Math.abs(K))==null){
+                    
+                }
+                
+                else{
+                    
                 }
             }
         }
