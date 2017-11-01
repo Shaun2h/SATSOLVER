@@ -6,8 +6,8 @@ package SAT;
 public final class Negativecheck {
     private Negativecheck(){}
     public static Integer check(Integer a){
-        if(a<0){-1}
-        else {return 1}
+        if(a<0){return -1;}
+        else {return 1;}
 
     }
 }
