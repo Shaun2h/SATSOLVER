@@ -1,6 +1,7 @@
 package SAT;
 
 
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -37,10 +38,14 @@ public class VariablesList {
     *   As a result, remove it.
     */
 
+    private ArrayList<Integer> RemoveFromClause;
+
+
     public ArrayList<LinkedList<Integer>> Formula;
     //Save the formula for future referencing within THIS function. NOTE THAT IT IS A REFERENCE AND IS HENCE A SHALLOW COPY.
     //ANY CHANGES MADE TO this.Formula IS REFLECTED IN THE REAL Formula Input! DO NOT USE REMOVE() on OUTER LIST.
     //ONLY USE REMOVE() OR CLEAR() ON OUTER LIST
+
 
     VariablesList(ArrayList<LinkedList<Integer>> Formula) {
         this.Lister = new HashMap<Integer, Variables>();
@@ -48,11 +53,10 @@ public class VariablesList {
         this.FinalisedValues = new HashMap<Integer, Variables>();
         this.Ignoreus = new HashMap<Integer, Integer>();
         this.Formula = Formula;
+        this.RemoveFromClause = new ArrayList<Integer>();
     }
     public void Register(LinkedList<Integer> Clause, Integer ClauseNumber){
         for (Integer K : Clause) {
-
-
             //Additional check of if it has already obtained a SET value is not yet implemented.
 
 
@@ -62,11 +66,16 @@ public class VariablesList {
 
 
             if(Clause.size()!=1){
-
                 //Run a check to see if this variable was never initialised in the list.
                 if(this.Lister.get(Math.abs(K))==null) {
                 Variableinitnot1.Makevars(this,ClauseNumber,K);
                 //run init for variable that appears in not1 clause.
+                List<Integer> varsandtype = new ArrayList<Integer>();
+                //Create a size = 2 List, First entry being which clause said variable appears in, and Second being variable type.
+                varsandtype.add(Clause.size());
+                varsandtype.add(Negativecheck.check(K));
+                this.Lister.get(Math.abs(K)).is_in.put(ClauseNumber,varsandtype);
+                //This updates the is in for the Variable. DO NOT CHANGE.
                 }
 
 
@@ -76,7 +85,7 @@ public class VariablesList {
                         //ie. this number does not have an assigned value.
                         List<Integer> varsandtype = new ArrayList<Integer>();
                         //Again, create a size = 2 List, First entry being which clause said variable appears in, and Second being variable type.
-                        varsandtype.add(ClauseNumber);
+                        varsandtype.add(Clause.size());
                         varsandtype.add(Negativecheck.check(K));
                         this.Lister.get(Math.abs(K)).is_in.put(ClauseNumber,varsandtype);
                         //Taking the reference from within Master Variables hashtable, update variable's is_in hashtable.
@@ -89,7 +98,7 @@ public class VariablesList {
                             //Keep the note that the clause is already solved. Continue Processing all variables. Deal
                             //with this later.
                             List<Integer> varsandtype = new ArrayList<Integer>();
-                            varsandtype.add(ClauseNumber);
+                            varsandtype.add(Clause.size());
                             varsandtype.add(Negativecheck.check(K));
                             //Taking the reference from within Master Variables hashtable, update variable's is_in hashtable.
                             this.Lister.get(Math.abs(K)).is_in.put(ClauseNumber, varsandtype);
@@ -99,14 +108,14 @@ public class VariablesList {
                             //Because this variable does not solve this clause by default, nothing is done.
                             //DPLL that is implemented later will continue to process with this given value.
                             //For later reference, we will of course add this to the is_in of this variable.
-                            List<Integer> varsandtype = new ArrayList<Integer>();
-                            varsandtype.add(ClauseNumber);
-                            varsandtype.add(Negativecheck.check(K));
-                            this.Lister.get(Math.abs(K)).is_in.put(ClauseNumber, varsandtype);
+                            //For this, remove this particular item from the clause later, by adding it to a list we keep for this purpose.
+                            //We will not update the is_in of this item given that it has no real bearing whether it is in this or not.
+                            this.RemoveFromClause.add(K.intValue());
+
                         }
 
                         List<Integer> varsandtype = new ArrayList<Integer>();
-                        varsandtype.add(ClauseNumber);
+                        varsandtype.add(Clause.size());
                         varsandtype.add(Negativecheck.check(K));
                         //Taking the reference from within Master Variables hashtable, update variable's is_in hashtable.
                         this.Lister.get(Math.abs(K)).is_in.put(ClauseNumber, varsandtype);
@@ -126,6 +135,11 @@ public class VariablesList {
                 //IF this variable has never been initialised and is appearing as a singular.
                 if(this.Lister.get(Math.abs(K))==null) {
                     Variableinit1.Makevarbut1(this, ClauseNumber,K);
+                    List<Integer> varsandtype = new ArrayList<Integer>();
+                    varsandtype.add(Clause.size());
+                    varsandtype.add(Negativecheck.check(K));
+                    //Taking the reference from within Master Variables hashtable, update variable's is_in hashtable.
+                    this.Lister.get(Math.abs(K)).is_in.put(ClauseNumber, varsandtype);
                     }
 
                     //if finalised value was -1.
@@ -139,30 +153,77 @@ public class VariablesList {
                         //Since no true assignment, Assign.
                         FinalisedValues.put(Math.abs(K), Lister.get(Math.abs(K)));
                         //Update Master Assigned Hash
+                        this.clauseissolved = true;
+                        //Clause became true by default..
+                        //Now to purge from any other things it appears in.
+                        Purger.purge(this,K);
+
                     }
                     //It has been initialised and had an assignment. Check for unsat condition.
                     else {
-                        if (this.Lister.get(Math.abs(K)).TrueFinalForm.intValue() != SingleClassAssigner.SingleAssign(K).intValue()) {
-                            //CHECK FOR CONFLICT BETWEEN OLD ASSIGNMENT AND CURRENT ASSIGNMENT.
+                        boolean checkforconflict = false;
+                        //First check through current formula
+                        for(Integer I: this.Formula.get(ClauseNumber)){
+                            //iterate through existing formula, looking for actual statement.
+                            if(Math.abs(I) == K ){
+                                checkforconflict = (this.Lister.get(Math.abs(K)).TrueFinalForm.intValue() != SingleClassAssigner.SingleAssign(I).intValue());
+                            }
+                        }
+                        //Then check through old formula. Delete clause if evaluates to true, delete variable only if evaluates to untrue.
+                        for(Integer L: this.Lister.get(K).is_in.keySet()){
+                            //within it's set of all clauses involved, invoke old formulas to check
+                            for(Integer ite : this.Formula.get(L)){
+                                //iterate through existing formula, looking for actual statement.
+                                if(Math.abs(ite) == K ){
+                                    checkforconflict = (this.Lister.get(Math.abs(K)).TrueFinalForm.intValue() != SingleClassAssigner.SingleAssign(ite).intValue());
+                                }
+                            }
+                        }
+
+                        if (checkforconflict) {
                             //CONFLICT SETS EQUATION TO IMMEDIATE UN-SAT.
                             this.is_unsat = true;
                             //Upon detection of unsat, because there is no need to care about the correct variables anymore,
                             //the hash of finalised values is not updated.
                         }
-
+                        //Both ways, it must be purged from previous statements.
 
                         //If nothing was wrong with the current set value, nothing is done. Move to next processing step.
                         else { //Triggers because its previous assignment was correct
                             //Given that this entire statement is now true, set this.clauseissolved=true.
                             this.clauseissolved = true;
+
                         }
+                        Purger.purge(this,K);
                     }
                 }
 
             }
+
         }
+        if(this.RemoveFromClause.size()!=0){
+            for(Integer Removeme: this.RemoveFromClause){
+                Clause.removeFirstOccurrence(Removeme);
+                //By using the provided reference to formula, EDIT base formula to remove element.
+            }
         //At this point, ALL variables in the clause have been checked.
-        //perform redundant clause removal and possible reduction if the clause was confirmed to be solved.
+        // perform redundant clause removal and possible reduction if the clause was confirmed to be solved.
+
+
+            //Check if new size of linked list is one. if so, it is now a new integer in Clause
+            if(Clause.size() ==1){
+                for(Integer NewSingularinClause: Clause){
+                    this.Lister.get(NewSingularinClause).TrueFinalForm =  SingleClassAssigner.SingleAssign(NewSingularinClause);
+                    //ie. apply the check done to single clause items.
+                    this.FinalisedValues.put(NewSingularinClause,this.Lister.get(NewSingularinClause));
+                    //now register again to master variables list.
+                    //Because this clause is now.. SOLVED... apply steps below.
+                    this.clauseissolved=true;
+
+                }
+            }
+        }
+
         if(this.clauseissolved){
             this.clauseissolved = false;
             //reset the clause is solved indicator.
@@ -173,6 +234,54 @@ public class VariablesList {
             //any weighted clauses to an arbitrary value. ie. 1
             this.Formula.get(ClauseNumber).clear();
         }
+
+
     }
 
 }
+
+/*
+for(Integer PURGE: this.Lister.get(Math.abs(K)).is_in.keySet()){
+                            //purge being the clause number it appeared in
+                            //FOR ALL CLAUSE NUMBERS IT APPEARS IN.
+                            boolean work = false;
+
+                            work = (this.Lister.get(Math.abs(K)).TrueFinalForm.intValue() == SingleClassAssigner.SingleAssign(this.Lister.get(Math.abs(K)).is_in.get(PURGE).get(1)).intValue());
+                            //Should we wipe the entire clause because the assigned value satisfies this clause?
+                            this.Formula.get(PURGE).removeFirstOccurrence(K);
+                            this.Formula.get(PURGE).removeFirstOccurrence(-K);
+                            //if the list does not contain the element, it is unchanged.
+                            this.Lister.get(Math.abs(K)).is_in.remove(PURGE);
+                            //As far as we care, this Integer K is not involved in this particular clause
+                            // if it satisfies a clause, delete entire clause using clause removal.
+                            //this is because now that clause has no real weightage to anything else either.
+                            if(work){
+                                //if the single assign check which looks at existing variable's type (negated or not) to determine
+                                //what to implement for the clause to be true,
+                                //and the assigned value which is assigned is the same part is zero, that clause is already fulfilled.
+                                //hence we conclude this clause has no real weightage over our future DPLL considerations.
+                                //hence REMOVE ALL TRACES of variables in this clause.
+
+                                for(Integer involvedinclausepurge : this.Formula.get(PURGE)){
+                                     this.Lister.get(Math.abs(involvedinclausepurge)).is_in.remove(PURGE);
+                                }
+                                this.Formula.get(PURGE).clear();
+                                //Clause wipe.
+                            }
+
+
+                            //All is in is removed. Now iterate through the new forma and update is_ins.
+                            for(Integer Remnants: this.Formula.get(PURGE)){
+
+                                List<Integer> varsandtype = new ArrayList<Integer>();
+                                varsandtype.add(this.Formula.get(PURGE).size());
+
+                                //obtain new clause size
+                                varsandtype.add(this.Lister.get(Math.abs(Remnants)).is_in.get(PURGE).get(1));
+                                //obtain old typing
+                                //Updated new is_in values for every variable within.
+                                this.Lister.get(Math.abs(Remnants)).is_in.put(PURGE,varsandtype);
+                            }
+
+                        }
+ */
