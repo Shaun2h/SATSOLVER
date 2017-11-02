@@ -8,7 +8,7 @@ public class Variables {
     //is_in registers which clauses this Integer is in, and 2 more things.
     // One: Number of Variables in said clause.
     // Two: Is it existing in the clause as a normal?(1) or as a negated form (-1)
-    private Integer represents;
+    public Integer represents;
     //There should never be a need to touch represents AFTER the initialisation
 
     public Integer TrueFinalForm;
